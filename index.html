@@ -152,8 +152,8 @@
 </head>
 <body>
 
-<h1>Fill the Mandala Rangoli</h1>
-<div class="instructions">Click on each segment to fill it with your selected color. Fill all segments to complete!</div>
+<h1>Fill the Rangoli</h1>
+<div class="instructions">Click on each segment to fill it with your selected color. Fill all segments to complete and get wishes from your favourite character!</div>
 
 <canvas id="rangoliCanvas" width="512" height="512"></canvas>
 
@@ -195,26 +195,71 @@
   const progressBar = document.getElementById('progressBar');
   let currentColor = [249, 215, 28, 255]; // yellow
   let isComplete = false;
-  let totalSegments = 24; // Fixed number of segments for this mandala
+  let totalSegments = 24; // Number of segments in this mandala
   let filledSegments = 0;
-  const segmentColors = {}; // To track which segments are filled
+  const segmentMap = {}; // To track which segments are filled
 
-  // Load mandala rangoli image
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = "https://i.postimg.cc/0jJQL6pm/download.jpg";
-  img.onload = () => {
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    updateProgress();
-  };
+  // Draw the mandala with clean segments
+  function drawMandala() {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = Math.min(canvas.width, canvas.height) * 0.45;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw outer circle
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // Draw segments
+    const segmentAngle = (Math.PI * 2) / totalSegments;
+    for (let i = 0; i < totalSegments; i++) {
+      const angle1 = i * segmentAngle;
+      const angle2 = (i + 1) * segmentAngle;
+      
+      // Draw segment border
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX + Math.cos(angle1) * radius, centerY + Math.sin(angle1) * radius);
+      ctx.arc(centerX, centerY, radius, angle1, angle2);
+      ctx.lineTo(centerX, centerY);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Fill segment if it's been colored
+      if (segmentMap[i]) {
+        ctx.fillStyle = segmentMap[i];
+        ctx.fill();
+      }
+      
+      // Draw decorative inner circles
+      if (i % 3 === 0) {
+        const innerRadius = radius * 0.3;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    
+    // Draw center circle
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 0.15, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Initialize the mandala
+  drawMandala();
 
   // Handle color selection
   palette.addEventListener('click', (e) => {
     if (e.target.classList.contains('color')) {
       document.querySelectorAll('.color').forEach(el => el.classList.remove('selected'));
       e.target.classList.add('selected');
-      const hex = e.target.getAttribute('data-color');
-      currentColor = hexToRgba(hex);
+      currentColor = hexToRgba(e.target.getAttribute('data-color'));
     }
   });
 
@@ -228,84 +273,39 @@
     if (isComplete) return;
     
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor(e.clientX - rect.left);
-    const y = Math.floor(e.clientY - rect.top);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const targetColor = getPixel(imageData, x, y);
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
     
-    // Skip if clicking on background or already filled with current color
-    if (targetColor[3] === 0 || colorsMatch(targetColor, currentColor)) return;
+    // Ignore clicks in the center or outside the mandala
+    if (distance < 20 || distance > canvas.width / 2 * 0.9) return;
     
-    // Check if this segment was already filled with a different color
-    const segmentKey = `${x},${y}`;
-    if (segmentColors[segmentKey] && colorsMatch(hexToRgba(segmentColors[segmentKey]), targetColor)) {
-      return; // Already filled this segment (with a different color)
-    }
+    // Calculate which segment was clicked
+    let angle = Math.atan2(dy, dx);
+    if (angle < 0) angle += Math.PI * 2;
+    const segment = Math.floor(angle / (Math.PI * 2 / totalSegments));
     
-    // Fill the segment
-    floodFill(imageData, x, y, targetColor, currentColor);
-    ctx.putImageData(imageData, 0, 0);
+    // Get the hex color
+    const hexColor = `#${currentColor[0].toString(16).padStart(2, '0')}${currentColor[1].toString(16).padStart(2, '0')}${currentColor[2].toString(16).padStart(2, '0')}`;
     
-    // Mark this segment as filled
-    segmentColors[segmentKey] = `#${currentColor[0].toString(16).padStart(2, '0')}${currentColor[1].toString(16).padStart(2, '0')}${currentColor[2].toString(16).padStart(2, '0')}`;
-    filledSegments++;
-    updateProgress();
-    
-    // Enable complete button if all segments are filled
-    if (filledSegments >= totalSegments) {
-      completeBtn.disabled = false;
+    // Only count as new fill if changing color
+    if (!segmentMap[segment] || segmentMap[segment] !== hexColor) {
+      if (!segmentMap[segment]) filledSegments++;
+      segmentMap[segment] = hexColor;
+      drawMandala();
+      updateProgress();
+      
+      // Enable complete button if all segments are filled
+      if (filledSegments >= totalSegments) {
+        completeBtn.disabled = false;
+      }
     }
   });
-
-  function getPixel(imageData, x, y) {
-    if (x < 0 || y < 0 || x >= imageData.width || y >= imageData.height) {
-      return [0, 0, 0, 0]; // transparent
-    }
-    const i = (y * imageData.width + x) * 4;
-    return [imageData.data[i], imageData.data[i+1], imageData.data[i+2], imageData.data[i+3]];
-  }
-
-  function setPixel(imageData, x, y, color) {
-    if (x < 0 || y < 0 || x >= imageData.width || y >= imageData.height) return;
-    const i = (y * imageData.width + x) * 4;
-    imageData.data[i] = color[0];
-    imageData.data[i+1] = color[1];
-    imageData.data[i+2] = color[2];
-    imageData.data[i+3] = color[3];
-  }
-
-  function colorsMatch(a, b) {
-    return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
-  }
-
-  function floodFill(imageData, x, y, targetColor, fillColor) {
-    const stack = [[x, y]];
-    const visited = new Set();
-    const maxPixels = 5000; // Safety limit to prevent infinite loops
-    let filledPixels = 0;
-    
-    while (stack.length && filledPixels < maxPixels) {
-      const [cx, cy] = stack.pop();
-      const key = `${cx},${cy}`;
-      
-      if (visited.has(key)) continue;
-      visited.add(key);
-      
-      if (cx < 0 || cy < 0 || cx >= imageData.width || cy >= imageData.height) continue;
-      
-      const currentColor = getPixel(imageData, cx, cy);
-      if (!colorsMatch(currentColor, targetColor)) continue;
-      
-      setPixel(imageData, cx, cy, fillColor);
-      filledPixels++;
-      
-      stack.push([cx + 1, cy]);
-      stack.push([cx - 1, cy]);
-      stack.push([cx, cy + 1]);
-      stack.push([cx, cy - 1]);
-    }
-  }
 
   function updateProgress() {
     const progress = Math.min(100, Math.floor((filledSegments / totalSegments) * 100));
