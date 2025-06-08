@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Happy Birthday Raveena</title>
+  <style>
+    body {
+      background: #fff8e7;
+      font-family: 'Bungee Inline', cursive;
+      text-align: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    canvas {
+      border: 5px solid #f9d71c;
+      border-radius: 20px;
+      box-shadow: 0 0 15px #f9d71caa;
+      cursor: pointer;
+      margin-bottom: 10px;
+      max-width: 100%;
+    }
+
+    .palette {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+
+    .color {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .color:hover {
+      transform: scale(1.2);
+    }
+
+    .color.selected {
+      border: 4px solid #000;
+      transform: scale(1.1);
+    }
+
+    button {
+      background-color: #f9d71c;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 25px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #4a2c00;
+      cursor: pointer;
+      box-shadow: 0 4px 8px #c7a31b;
+      margin: 15px;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px #c7a31b;
+    }
+
+    button:disabled {
+      background-color: #cccccc;
+      color: #666666;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: 0 4px 8px #999999;
+    }
+
+    #videoContainer {
+      display: none;
+      border: 8px solid #f9d71c;
+      border-radius: 20px;
+      overflow: hidden;
+      width: 640px;
+      max-width: 100%;
+      box-shadow: 0 0 30px #f9d71ccc;
+      margin: 20px auto;
+    }
+
+    iframe {
+      width: 100%;
+      height: 360px;
+      border: none;
+    }
+
+    #birthdayMessage {
+      display: none;
+      margin-top: 15px;
+      font-size: 3rem;
+      color: #f9d71c;
+      text-shadow:
+        3px 3px 0 #4a2c00,
+        -1px -1px 0 #4a2c00,
+        1px -1px 0 #4a2c00,
+        -1px 1px 0 #4a2c00,
+        1px 1px 0 #4a2c00;
+      animation: pulse 1.5s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+
+    .instructions {
+      margin: 15px auto;
+      max-width: 600px;
+      padding: 10px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      pointer-events: none;
+      display: none;
+    }
+
+    .progress-container {
+      width: 80%;
+      max-width: 500px;
+      margin: 20px auto;
+      background-color: #f0e6d2;
+      border-radius: 10px;
+      height: 20px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: #f9d71c;
+      width: 0%;
+      transition: width 0.5s;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee+Inline&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<h1>Fill the Mandala Rangoli</h1>
+<div class="instructions">Click on each segment to fill it with your selected color. Fill all segments to complete!</div>
+
+<canvas id="rangoliCanvas" width="512" height="512"></canvas>
+
+<div class="progress-container">
+  <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="palette" id="palette">
+  <div class="color selected" style="background-color: #f9d71c;" data-color="#f9d71c"></div>
+  <div class="color" style="background-color: #ff6666;" data-color="#ff6666"></div>
+  <div class="color" style="background-color: #66cc66;" data-color="#66cc66"></div>
+  <div class="color" style="background-color: #6699ff;" data-color="#6699ff"></div>
+  <div class="color" style="background-color: #cc99ff;" data-color="#cc99ff"></div>
+  <div class="color" style="background-color: #ff9966;" data-color="#ff9966"></div>
+  <div class="color" style="background-color: #66cccc;" data-color="#66cccc"></div>
+  <div class="color" style="background-color: #ffcc66;" data-color="#ffcc66"></div>
+</div>
+
+<button id="completeBtn" disabled>Complete</button>
+
+<canvas id="confetti-canvas"></canvas>
+
+<div id="videoContainer">
+  <iframe 
+    src="https://www.youtube.com/embed/ClQZou9WuKM?autoplay=1" 
+    allow="autoplay; encrypted-media" 
+    allowfullscreen>
+  </iframe>
+</div>
+
+<div id="birthdayMessage">Happy Birthday Raveena!</div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+<script>
+  const canvas = document.getElementById('rangoliCanvas');
+  const ctx = canvas.getContext('2d');
+  const completeBtn = document.getElementById('completeBtn');
+  const palette = document.getElementById('palette');
+  const progressBar = document.getElementById('progressBar');
+  let currentColor = [249, 215, 28, 255]; // yellow
+  let isComplete = false;
+  let totalSegments = 24; // Fixed number of segments for this mandala
+  let filledSegments = 0;
+  const segmentColors = {}; // To track which segments are filled
+
+  // Load mandala rangoli image
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = "https://i.postimg.cc/0jJQL6pm/download.jpg";
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    updateProgress();
+  };
+
+  // Handle color selection
+  palette.addEventListener('click', (e) => {
+    if (e.target.classList.contains('color')) {
+      document.querySelectorAll('.color').forEach(el => el.classList.remove('selected'));
+      e.target.classList.add('selected');
+      const hex = e.target.getAttribute('data-color');
+      currentColor = hexToRgba(hex);
+    }
+  });
+
+  function hexToRgba(hex) {
+    const bigint = parseInt(hex.replace('#', ''), 16);
+    return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255, 255];
+  }
+
+  // Paint individual segments
+  canvas.addEventListener('click', function (e) {
+    if (isComplete) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor(e.clientX - rect.left);
+    const y = Math.floor(e.clientY - rect.top);
+    
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const targetColor = getPixel(imageData, x, y);
+    
+    // Skip if clicking on background or already filled with current color
+    if (targetColor[3] === 0 || colorsMatch(targetColor, currentColor)) return;
+    
+    // Check if this segment was already filled with a different color
+    const segmentKey = `${x},${y}`;
+    if (segmentColors[segmentKey] && colorsMatch(hexToRgba(segmentColors[segmentKey]), targetColor)) {
+      return; // Already filled this segment (with a different color)
+    }
+    
+    // Fill the segment
+    floodFill(imageData, x, y, targetColor, currentColor);
+    ctx.putImageData(imageData, 0, 0);
+    
+    // Mark this segment as filled
+    segmentColors[segmentKey] = `#${currentColor[0].toString(16).padStart(2, '0')}${currentColor[1].toString(16).padStart(2, '0')}${currentColor[2].toString(16).padStart(2, '0')}`;
+    filledSegments++;
+    updateProgress();
+    
+    // Enable complete button if all segments are filled
+    if (filledSegments >= totalSegments) {
+      completeBtn.disabled = false;
+    }
+  });
+
+  function getPixel(imageData, x, y) {
+    if (x < 0 || y < 0 || x >= imageData.width || y >= imageData.height) {
+      return [0, 0, 0, 0]; // transparent
+    }
+    const i = (y * imageData.width + x) * 4;
+    return [imageData.data[i], imageData.data[i+1], imageData.data[i+2], imageData.data[i+3]];
+  }
+
+  function setPixel(imageData, x, y, color) {
+    if (x < 0 || y < 0 || x >= imageData.width || y >= imageData.height) return;
+    const i = (y * imageData.width + x) * 4;
+    imageData.data[i] = color[0];
+    imageData.data[i+1] = color[1];
+    imageData.data[i+2] = color[2];
+    imageData.data[i+3] = color[3];
+  }
+
+  function colorsMatch(a, b) {
+    return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+  }
+
+  function floodFill(imageData, x, y, targetColor, fillColor) {
+    const stack = [[x, y]];
+    const visited = new Set();
+    const maxPixels = 5000; // Safety limit to prevent infinite loops
+    let filledPixels = 0;
+    
+    while (stack.length && filledPixels < maxPixels) {
+      const [cx, cy] = stack.pop();
+      const key = `${cx},${cy}`;
+      
+      if (visited.has(key)) continue;
+      visited.add(key);
+      
+      if (cx < 0 || cy < 0 || cx >= imageData.width || cy >= imageData.height) continue;
+      
+      const currentColor = getPixel(imageData, cx, cy);
+      if (!colorsMatch(currentColor, targetColor)) continue;
+      
+      setPixel(imageData, cx, cy, fillColor);
+      filledPixels++;
+      
+      stack.push([cx + 1, cy]);
+      stack.push([cx - 1, cy]);
+      stack.push([cx, cy + 1]);
+      stack.push([cx, cy - 1]);
+    }
+  }
+
+  function updateProgress() {
+    const progress = Math.min(100, Math.floor((filledSegments / totalSegments) * 100));
+    progressBar.style.width = `${progress}%`;
+  }
+
+  function triggerConfetti() {
+    const confettiCanvas = document.getElementById('confetti-canvas');
+    confettiCanvas.style.display = 'block';
+    
+    // Confetti configuration
+    const confettiSettings = {
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#f9d71c', '#ff6666', '#66cc66', '#6699ff', '#cc99ff', '#ff9966']
+    };
+    
+    // Fire confetti
+    confetti.create(confettiCanvas, {
+      resize: true,
+      useWorker: true
+    })(confettiSettings);
+    
+    // Additional bursts
+    setTimeout(() => confetti(confettiSettings), 300);
+    setTimeout(() => confetti(confettiSettings), 600);
+    setTimeout(() => confetti(confettiSettings), 900);
+    
+    // Hide confetti after animation
+    setTimeout(() => {
+      confettiCanvas.style.display = 'none';
+    }, 2000);
+  }
+
+  completeBtn.addEventListener('click', () => {
+    isComplete = true;
+    canvas.style.display = 'none';
+    palette.style.display = 'none';
+    completeBtn.style.display = 'none';
+    document.querySelector('.instructions').style.display = 'none';
+    
+    // Show confetti first
+    triggerConfetti();
+    
+    // Then show video and message after a delay
+    setTimeout(() => {
+      document.getElementById('videoContainer').style.display = 'block';
+      document.getElementById('birthdayMessage').style.display = 'block';
+      
+      // Force video to play with sound (may still require user interaction in some browsers)
+      const iframe = document.querySelector('iframe');
+      iframe.src += "&mute=0";
+    }, 2000);
+  });
+</script>
+
+</body>
+</html>
